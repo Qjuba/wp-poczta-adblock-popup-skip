@@ -37,12 +37,12 @@ function hideAdDivs() {
 
     // 2. Ukrywanie sponsorowanych wiadomości 'Whatever / WP'
     document.querySelectorAll('div.flex-sh_1.trunc_true').forEach(div => {
-      if (div.textContent.includes('YouGov Shopper /WP') || div.textContent.includes('/WP')) {
+      if (div.textContent.includes('/WP')) {
         const mainContainer = div.closest('div.group.d_flex.flex-d_column') || div.closest('div.cursor_pointer');
         
         if (mainContainer && mainContainer.style.display !== 'none') {
           mainContainer.style.setProperty('display', 'none', 'important');
-          console.log('Ukryto całą reklamę YouGov/WP:', mainContainer);
+          console.log('Ukryto całą reklamę /WP:', mainContainer);
         }
       }
     });
