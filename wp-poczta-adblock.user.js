@@ -1,84 +1,85 @@
 // ==UserScript==
 // @name      WP Poczta - Adblock
-// @version   9
+// @version   10
 // @include   https://poczta.wp.pl/*
 // @grant     none
+// @run-at    document-start
 // ==/UserScript==
 
-function waitForButton(text, callback) {
-  const observer = new MutationObserver(() => {
-    const btn = Array.from(document.querySelectorAll('button'))
-      .find(btn => btn.innerText === text);
-    if (btn) {
-      observer.disconnect();
-      callback(btn);
+(function() {
+  'use strict';
+
+  const injectCSS = () => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      div.pt_2.pb_2.pl_4.pr_2.bg-c_white.min-h_unset,
+      div[class*="print-hide-tactic_removed"],
+      div[class*="h_168px"] {
+        display: none !important;
+      }
+    `;
+    if (document.head) document.head.appendChild(style);
+    else document.addEventListener('DOMContentLoaded', () => document.head.appendChild(style));
+  };
+  injectCSS();
+
+  let btnClicked = false;
+  let updateScheduled = false;
+
+  const runTextChecks = () => {
+    updateScheduled = false;
+
+    if (!btnClicked) {
+      const buttons = document.querySelectorAll('button');
+      for (const btn of buttons) {
+        if (btn.textContent.includes('Rozumiem ryzyko, przechodzę do poczty')) {
+          btn.click();
+          btnClicked = true;
+          break; 
+        }
+      }
+    }
+
+    const wpDivs = document.querySelectorAll('div.flex-sh_1.trunc_true');
+    for (const div of wpDivs) {
+      if (div.textContent.includes('/WP')) {
+        const parent = div.closest('div.group.d_flex.flex-d_column') || div.closest('div.cursor_pointer');
+        if (parent && parent.style.display !== 'none') {
+          parent.style.setProperty('display', 'none', 'important');
+        }
+      }
+    }
+
+    const pocztaDivs = document.querySelectorAll('div.textStyle_bodyBoldMd');
+    for (const div of pocztaDivs) {
+      if (div.textContent.includes('Poczta')) {
+        const parent = div.closest('div.group.d_flex.flex-d_column') || div.closest('div.cursor_pointer');
+        if (parent && parent.style.display !== 'none') {
+          parent.style.setProperty('display', 'none', 'important');
+        }
+      }
+    }
+  };
+
+  const observer = new MutationObserver((mutations) => {
+    const hasNewNodes = mutations.some(m => m.addedNodes.length > 0);
+    if (!hasNewNodes) return;
+
+    if (!updateScheduled) {
+      updateScheduled = true;
+      requestAnimationFrame(runTextChecks);
     }
   });
-  observer.observe(document.body, { childList: true, subtree: true });
-}
 
-waitForButton('Rozumiem ryzyko, przechodzę do poczty', btn => {
-  btn.click();
-  console.log(`Przycisk 'Rozumiem ryzyko, przechodzę do poczty' został kliknięty`);
-});
+  const initObserver = () => {
+    observer.observe(document.body, { childList: true, subtree: true });
+    runTextChecks();
+  };
 
-function hideAdDivs() {
-  const adClasses = ['pt_2', 'pb_2', 'pl_4', 'pr_2', 'bg-c_white', 'min-h_unset'];
-
-  function checkAndHide() {
-    // 1. Ukrywanie standardowych banerów reklamowych
-    document.querySelectorAll('div').forEach(div => {
-      const cn = div.className;
-      if (typeof cn === 'string' && adClasses.every(cls => cn.includes(cls))) {
-        div.style.setProperty('display', 'none', 'important');
-        console.log('Reklama ukryta (baner):', cn);
-      }
-    });
-
-    // 2. Ukrywanie sponsorowanych wiadomości 'Whatever / WP'
-    document.querySelectorAll('div.flex-sh_1.trunc_true').forEach(div => {
-      if (div.textContent.includes('/WP')) {
-        const mainContainer = div.closest('div.group.d_flex.flex-d_column') || div.closest('div.cursor_pointer');
-        
-        if (mainContainer && mainContainer.style.display !== 'none') {
-          mainContainer.style.setProperty('display', 'none', 'important');
-          console.log('Ukryto całą reklamę /WP:', mainContainer);
-        }
-      }
-    });
-
-    // 3. Ukrywanie wiersza na podstawie diva textStyle_bodyBoldMd z napisem "Poczta"
-    document.querySelectorAll('div.textStyle_bodyBoldMd').forEach(div => {
-      if (div.textContent.trim() === 'Poczta' || div.textContent.includes('Poczta')) {
-        const mainContainer = div.closest('div.group.d_flex.flex-d_column') || div.closest('div.cursor_pointer');
-        
-        if (mainContainer && mainContainer.style.display !== 'none') {
-          mainContainer.style.setProperty('display', 'none', 'important');
-          console.log('Ukryto reklamę z napisem Poczta:', mainContainer);
-        }
-      }
-    });
-
-    // 4. Ukrywanie kontenerów z klasą print-hide-tactic_removed
-    document.querySelectorAll('div[class*="print-hide-tactic_removed"]').forEach(div => {
-      if (div.style.display !== 'none') {
-        div.style.setProperty('display', 'none', 'important');
-        console.log('Ukryto kontener tactic_removed:', div);
-      }
-    });
-
-    // 5. Ukrywanie bocznych/dolnych kaset reklamowych h_168px
-    document.querySelectorAll('div[class*="h_168px"]').forEach(div => {
-      if (div.style.display !== 'none') {
-        div.style.setProperty('display', 'none', 'important');
-        console.log('Ukryto kontener h_168px:', div);
-      }
-    });
+  if (document.body) {
+    initObserver();
+  } else {
+    document.addEventListener('DOMContentLoaded', initObserver);
   }
 
-  checkAndHide();
-  const observer = new MutationObserver(checkAndHide);
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
-hideAdDivs();
+})();
